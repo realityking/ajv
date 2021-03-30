@@ -28,3 +28,7 @@ export default function quote(s: string): string {
 }
 
 quote.code = 'require("ajv/dist/runtime/quote").default'
+quote.importParameters = {
+  package: "ajv/dist/runtime/quote",
+  name: "default",
+}

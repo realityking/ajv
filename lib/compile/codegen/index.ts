@@ -1,4 +1,4 @@
-import type {ScopeValueSets, NameValue, ValueScope, ValueScopeName} from "./scope"
+import type {ScopeValueSets, NameValue, ValueScope, ValueScopeName, ImportValue} from "./scope"
 import {_, nil, _Code, Code, Name, UsedNames, CodeItem, addCodeArg, _CodeOrName} from "./code"
 import {Scope, varKinds} from "./scope"
 
@@ -423,6 +423,7 @@ type Constants = Record<string, SafeExpr | undefined>
 
 export interface CodeGenOptions {
   es5?: boolean
+  esm?: boolean
   lines?: boolean
   ownProperties?: boolean
 }
@@ -463,6 +464,14 @@ export class CodeGen {
 
   // reserves unique name in the external scope and assigns value to it
   scopeValue(prefixOrName: ValueScopeName | string, value: NameValue): Name {
+    const name = this._extScope.value(prefixOrName, value)
+    const vs = this._values[name.prefix] || (this._values[name.prefix] = new Set())
+    vs.add(name)
+    return name
+  }
+
+  // reserves unique name in the external scope and assigns import value to it
+  scopeImport(prefixOrName: ValueScopeName | string, value: ImportValue): Name {
     const name = this._extScope.value(prefixOrName, value)
     const vs = this._values[name.prefix] || (this._values[name.prefix] = new Set())
     vs.add(name)

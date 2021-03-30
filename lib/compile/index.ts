@@ -110,14 +110,17 @@ export function compileSchema(this: Ajv, sch: SchemaEnv): SchemaEnv {
   const _sch = getCompilingSchema.call(this, sch)
   if (_sch) return _sch
   const rootId = getFullPath(sch.root.baseId) // TODO if getFullPath removed 1 tests fails
-  const {es5, lines} = this.opts.code
+  const {es5, esm, lines} = this.opts.code
   const {ownProperties} = this.opts
-  const gen = new CodeGen(this.scope, {es5, lines, ownProperties})
+  const gen = new CodeGen(this.scope, {es5, esm, lines, ownProperties})
   let _ValidationError
   if (sch.$async) {
-    _ValidationError = gen.scopeValue("Error", {
+    _ValidationError = gen.scopeImport("Error", {
       ref: ValidationError,
-      code: _`require("ajv/dist/runtime/validation_error").default`,
+      parameters: {
+        package: "ajv/dist/runtime/validation_error",
+        name: "default",
+      },
     })
   }
 

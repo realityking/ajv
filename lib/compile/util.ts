@@ -1,4 +1,5 @@
 import type {AnySchema, EvaluatedProperties, EvaluatedItems} from "../types"
+import type {ImportParameters} from "./codegen/scope"
 import type {SchemaCxt, SchemaObjCxt} from "."
 import {_, getProperty, Code, Name, CodeGen} from "./codegen"
 import {_Code} from "./codegen/code"
@@ -170,11 +171,23 @@ export function setEvaluated(gen: CodeGen, props: Name, ps: {[K in string]?: tru
 
 const snippets: {[S in string]?: _Code} = {}
 
-export function useFunc(gen: CodeGen, f: {code: string}): Name {
-  return gen.scopeValue("func", {
-    ref: f,
-    code: snippets[f.code] || (snippets[f.code] = new _Code(f.code)),
-  })
+export function useFunc(
+  gen: CodeGen,
+  f: {code?: string; importParameters?: ImportParameters}
+): Name {
+  if (f.importParameters) {
+    return gen.scopeImport("func", {
+      ref: f,
+      parameters: f.importParameters,
+    })
+  } else if (f.code) {
+    return gen.scopeValue("func", {
+      ref: f,
+      code: snippets[f.code] || (snippets[f.code] = new _Code(f.code)),
+    })
+  } else {
+    throw new Error("func has neither code nor import parameters")
+  }
 }
 
 export enum Type {

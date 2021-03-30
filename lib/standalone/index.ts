@@ -2,7 +2,7 @@ import type AjvCore from "../core"
 import type {AnyValidateFunction, SourceCode} from "../types"
 import type {SchemaEnv} from "../compile"
 import {UsedScopeValues, UsedValueState, ValueScopeName, varKinds} from "../compile/codegen/scope"
-import {_, nil, _Code, Code, getProperty} from "../compile/codegen/code"
+import {_, nil, _Code, Code, getProperty, IDENTIFIER} from "../compile/codegen/code"
 
 export default function standaloneCode(
   ajv: AjvCore,
@@ -30,7 +30,11 @@ export default function standaloneCode(
     const usedValues: UsedScopeValues = {}
     const n = source?.validateName
     const vCode = validateCode(usedValues, source)
-    return `"use strict";${_n}module.exports = ${n};${_n}module.exports.default = ${n};${_n}${vCode}`
+    if (ajv.opts.code.esm) {
+      return `${_n}export default ${n};${_n}${vCode}`
+    } else {
+      return `"use strict";${_n}module.exports = ${n};${_n}module.exports.default = ${n};${_n}${vCode}`
+    }
   }
 
   function multiExportsCode<T extends SchemaEnv | string>(
@@ -38,12 +42,26 @@ export default function standaloneCode(
     getValidateFunc: (schOrId: T) => AnyValidateFunction | undefined
   ): string {
     const usedValues: UsedScopeValues = {}
-    let code = _`"use strict";`
+    const isESM = ajv.opts.code.esm
+    let code = isESM ? _`` : _`"use strict";`
     for (const name in schemas) {
+      if (isESM && !IDENTIFIER.test(name)) {
+        throw new Error(
+          `moduleCode: schema ${name} does not have a named export or the named export is not a valid identifier. When generating ESM every export needs to have a valid identifier as name.`
+        )
+      }
       const v = getValidateFunc(schemas[name] as T)
       if (v) {
         const vCode = validateCode(usedValues, v.source)
-        code = _`${code}${_n}exports${getProperty(name)} = ${v.source?.validateName};${_n}${vCode}`
+        if (isESM) {
+          code = _`${code}${_n}export {${v.source?.validateName} as ${new _Code(
+            `${name}`
+          )}};${_n}${vCode}`
+        } else {
+          code = _`${code}${_n}exports${getProperty(name)} = ${
+            v.source?.validateName
+          };${_n}${vCode}`
+        }
       }
     }
     return `${code}`

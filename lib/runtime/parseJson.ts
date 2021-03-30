@@ -30,6 +30,10 @@ export function parseJson(s: string, pos: number): unknown {
 parseJson.message = undefined as string | undefined
 parseJson.position = 0 as number
 parseJson.code = 'require("ajv/dist/runtime/parseJson").parseJson'
+parseJson.importParameters = {
+  package: "ajv/dist/runtime/parseJson",
+  name: "parseJson",
+}
 
 export function parseJsonNumber(s: string, pos: number, maxDigits?: number): number | undefined {
   let numStr = ""
@@ -94,6 +98,10 @@ export function parseJsonNumber(s: string, pos: number, maxDigits?: number): num
 parseJsonNumber.message = undefined as string | undefined
 parseJsonNumber.position = 0 as number
 parseJsonNumber.code = 'require("ajv/dist/runtime/parseJson").parseJsonNumber'
+parseJson.importParameters = {
+  package: "ajv/dist/runtime/parseJson",
+  name: "parseJsonNumber",
+}
 
 const escapedChars: {[X in string]?: string} = {
   b: "\b",
@@ -171,3 +179,7 @@ export function parseJsonString(s: string, pos: number): string | undefined {
 parseJsonString.message = undefined as string | undefined
 parseJsonString.position = 0 as number
 parseJsonString.code = 'require("ajv/dist/runtime/parseJson").parseJsonString'
+parseJson.importParameters = {
+  package: "ajv/dist/runtime/parseJson",
+  name: "parseJsonString",
+}

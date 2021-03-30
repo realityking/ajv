@@ -27,3 +27,7 @@ export default function validTimestamp(str: string): boolean {
 }
 
 validTimestamp.code = 'require("ajv/dist/runtime/timestamp").default'
+validTimestamp.importParameters = {
+  package: "ajv/dist/runtime/timestamp",
+  name: "default",
+}

@@ -11,10 +11,31 @@ export interface NameValue {
   code?: Code // this is the code creating the value needed for standalone code wit_out closure - can be a primitive value, function or import (`require`)
 }
 
+export interface ImportParameters {
+  package: string
+  name: string
+}
+
+export interface ImportValue {
+  ref: ValueReference // this is the reference to any value that can be referred to from generated code via `globals` var in the closure
+  key?: unknown // any key to identify a global to avoid duplicates, if not passed ref is used
+  parameters: ImportParameters
+}
+
+export type Value = NameValue | ImportValue
+
+function isImportValue(value: Value): value is ImportValue {
+  return value.hasOwnProperty("parameters")
+}
+
+function isImportParameters(p: any): p is ImportParameters {
+  return p && p.package && p.name
+}
+
 export type ValueReference = unknown // possibly make CodeGen parameterized type on this type
 
 class ValueError extends Error {
-  readonly value?: NameValue
+  readonly value?: Value
   constructor(name: ValueScopeName) {
     super(`CodeGen: "code" for ${name} not defined`)
     this.value = name.value
@@ -29,6 +50,7 @@ interface ScopeOptions {
 interface ValueScopeOptions extends ScopeOptions {
   scope: ScopeStore
   es5?: boolean
+  esm?: boolean
   lines?: boolean
 }
 
@@ -95,7 +117,7 @@ interface ScopePath {
 
 export class ValueScopeName extends Name {
   readonly prefix: string
-  value?: NameValue
+  value?: Value
   scopePath?: Code
 
   constructor(prefix: string, nameStr: string) {
@@ -103,7 +125,7 @@ export class ValueScopeName extends Name {
     this.prefix = prefix
   }
 
-  setValue(value: NameValue, {property, itemIndex}: ScopePath): void {
+  setValue(value: Value, {property, itemIndex}: ScopePath): void {
     this.value = value
     this.scopePath = _`.${new Name(property)}[${itemIndex}]`
   }
@@ -134,7 +156,7 @@ export class ValueScope extends Scope {
     return new ValueScopeName(prefix, this._newName(prefix))
   }
 
-  value(nameOrPrefix: ValueScopeName | string, value: NameValue): ValueScopeName {
+  value(nameOrPrefix: ValueScopeName | string, value: Value): ValueScopeName {
     if (value.ref === undefined) throw new Error("CodeGen: ref must be passed in value")
     const name = this.toName(nameOrPrefix) as ValueScopeName
     const {prefix} = name
@@ -177,7 +199,12 @@ export class ValueScope extends Scope {
       values,
       (name: ValueScopeName) => {
         if (name.value === undefined) throw new Error(`CodeGen: name "${name}" has no value`)
-        return name.value.code
+
+        if (isImportValue(name.value)) {
+          return name.value.parameters
+        } else {
+          return name.value.code
+        }
       },
       usedValues,
       getCode
@@ -186,11 +213,12 @@ export class ValueScope extends Scope {
 
   private _reduceValues(
     values: ScopeValues | ScopeValueSets,
-    valueCode: (n: ValueScopeName) => Code | undefined,
+    valueCode: (n: ValueScopeName) => Code | ImportParameters | undefined,
     usedValues: UsedScopeValues = {},
     getCode?: (n: ValueScopeName) => Code | undefined
   ): Code {
     let code: Code = nil
+    const def = this.opts.es5 ? varKinds.var : varKinds.const
     for (const prefix in values) {
       const vs = values[prefix]
       if (!vs) continue
@@ -199,8 +227,17 @@ export class ValueScope extends Scope {
         if (nameSet.has(name)) return
         nameSet.set(name, UsedValueState.Started)
         let c = valueCode(name)
-        if (c) {
-          const def = this.opts.es5 ? varKinds.var : varKinds.const
+        if (isImportParameters(c)) {
+          if (this.opts.esm) {
+            code = _`${code}import {${new Name(c.name)} as ${name}} from ${`${c.package}.js`};${
+              this.opts._n
+            }`
+          } else {
+            code = _`${code}${def} ${name} = require(${c.package}).${new Name(c.name)};${
+              this.opts._n
+            }`
+          }
+        } else if (c) {
           code = _`${code}${def} ${name} = ${c};${this.opts._n}`
         } else if ((c = getCode?.(name))) {
           code = _`${code}${c}${this.opts._n}`

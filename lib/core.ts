@@ -130,6 +130,7 @@ export interface CurrentOptions {
 
 export interface CodeOptions {
   es5?: boolean
+  esm?: boolean
   lines?: boolean
   optimize?: boolean | number
   formats?: Code // code to require (or construct) map of available formats - for standalone code
@@ -268,8 +269,8 @@ export default class Ajv {
 
   constructor(opts: Options = {}) {
     opts = this.opts = {...opts, ...requiredOptions(opts)}
-    const {es5, lines} = this.opts.code
-    this.scope = new ValueScope({scope: {}, prefixes: EXT_SCOPE_NAMES, es5, lines})
+    const {es5, esm, lines} = this.opts.code
+    this.scope = new ValueScope({scope: {}, prefixes: EXT_SCOPE_NAMES, es5, esm, lines})
     this.logger = getLogger(opts.logger)
     const formatOpt = opts.validateFormats
     opts.validateFormats = false
